@@ -133,6 +133,12 @@ const getYouTubeVideoDetails = async (link) => {
     res.send(allVideoData);
   });
 
+
+  app.get('/test', async (req, res) => {
+
+    res.send('aboba');
+  });
+
   app.listen(port, () => {
     console.log(`App listening at http://localhost:${port}`);
   });
