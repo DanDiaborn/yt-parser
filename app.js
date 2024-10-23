@@ -7,6 +7,9 @@ const xml2js = require('xml2js'); // Импортируем библиотеку
 const app = express();
 const port = 3000;
 
+// Включаем доверие к прокси
+app.set('trust proxy', 1);
+
 // Подключаем middleware для обработки JSON
 app.use(express.json());
 
@@ -41,7 +44,7 @@ const getYouTubeVideoDetails = async (link) => {
   const page = await browser.newPage(); // Открываем новую страницу в уже запущенном браузере
 
   // Переход на указанный YouTube-ролик
-  await page.goto(link, { waitUntil: 'networkidle2' });
+  await page.goto(link, { waitUntil: 'networkidle2', timeout: 60000 }); // Увеличен таймаут до 60 секунд
 
   // Получение названия, описания и других данных видео
   const videoDetails = await page.evaluate(() => {
@@ -49,7 +52,7 @@ const getYouTubeVideoDetails = async (link) => {
     const descriptionMeta = document.querySelector('meta[name="description"]'); // Мета-тег с описанием
     const description = descriptionMeta ? descriptionMeta.content : 'Описание не найдено'; // Получаем контент мета-тега
 
-    const lengthSeconds = document.querySelector('.ytp-time-duration').innerHTML || 'Не найдено';
+    const lengthSeconds = document.querySelector('.ytp-time-duration')?.innerHTML || 'Не найдено';
 
     // Извлечение URL превью
     const thumbnailUrl = document.querySelector('link[itemprop="thumbnailUrl"]')?.getAttribute('href') || 'Не найдено';
@@ -86,10 +89,9 @@ const getYouTubeVideoDetails = async (link) => {
   browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
   console.log('Браузер запущен');
 
-  app.get('/', async (req, res) => {
+  app.post('/', async (req, res) => {
     const videoIds = req.body.links;
     let allVideoData = [];
-
 
     if (!Array.isArray(videoIds) || videoIds.length === 0) {
       console.error('Список идентификаторов видео пуст или неверный.');
@@ -133,9 +135,7 @@ const getYouTubeVideoDetails = async (link) => {
     res.send(allVideoData);
   });
 
-
   app.get('/test', async (req, res) => {
-
     res.send('aboba');
   });
 
