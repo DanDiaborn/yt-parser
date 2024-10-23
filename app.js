@@ -83,7 +83,7 @@ const getYouTubeVideoDetails = async (link) => {
 
 // Запускаем браузер один раз при старте приложения
 (async () => {
-  browser = await puppeteer.launch();
+  browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
   console.log('Браузер запущен');
 
   app.get('/', async (req, res) => {
