@@ -1,8 +1,11 @@
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-extra');
+const stealthPlugin = require('puppeteer-extra-plugin-stealth');
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const axios = require('axios'); // Импортируем библиотеку axios
 const xml2js = require('xml2js'); // Импортируем библиотеку для разбора XML
+
+puppeteer.use(stealthPlugin());
 
 const app = express();
 const port = 3000;
@@ -43,8 +46,14 @@ let browser; // Объявляем переменную для браузера
 const getYouTubeVideoDetails = async (link) => {
   const page = await browser.newPage(); // Открываем новую страницу в уже запущенном браузере
 
+  // Устанавливаем пользовательский агент и заголовки
+  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+  await page.setExtraHTTPHeaders({
+    'Accept-Language': 'en-US,en;q=0.9',
+  });
+
   // Переход на указанный YouTube-ролик
-  await page.goto(link, { waitUntil: 'networkidle2', timeout: 60000 }); // Увеличен таймаут до 60 секунд
+  await page.goto(link, { waitUntil: 'networkidle2', timeout: 120000 }); // Увеличен таймаут до 120 секунд
 
   // Получение названия, описания и других данных видео
   const videoDetails = await page.evaluate(() => {
@@ -101,35 +110,37 @@ const getYouTubeVideoDetails = async (link) => {
     const videoDetailsPromises = videoIds.map(async (id) => {
       const link = 'https://www.youtube.com/watch?v=' + id;
       try {
+        const page = await browser.newPage();
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+        await page.setExtraHTTPHeaders({
+          'Accept-Language': 'en-US,en;q=0.9',
+        });
         await delay(Math.random() * 1000); // Задержка от 0 до 1 секунды
-        let videoData = await getYouTubeVideoDetails(link);
+        await page.goto(link, { waitUntil: 'networkidle2', timeout: 120000 });
 
-        // Проверяем, есть ли URL субтитров
+        let videoData = await getYouTubeVideoDetails(link);
         if (videoData.subtitlesUrl) {
           try {
-            const subtitlesResponse = await axios.get(videoData.subtitlesUrl); // Используем axios для получения субтитров
-            const subtitlesText = subtitlesResponse.data; // Предположим, что это текст в формате XML
-            videoData.subtitles = await extractTextFromSubtitles(subtitlesText); // Извлекаем текст из субтитров
+            const subtitlesResponse = await axios.get(videoData.subtitlesUrl);
+            const subtitlesText = subtitlesResponse.data;
+            videoData.subtitles = await extractTextFromSubtitles(subtitlesText);
           } catch (subtitlesError) {
             console.warn(`Субтитры не найдены для видео ${link}: ${subtitlesError.message}`);
-            videoData.subtitles = 'Субтитры не найдены'; // Устанавливаем сообщение о недоступности субтитров
+            videoData.subtitles = 'Субтитры не найдены';
           }
         } else {
-          videoData.subtitles = 'Субтитры не доступны для этого видео'; // Если URL нет
+          videoData.subtitles = 'Субтитры не доступны для этого видео';
         }
         delete videoData.subtitlesUrl;
 
-        return videoData; // Возвращаем данные видео
+        return videoData;
       } catch (error) {
         console.error(`Ошибка при обработке видео по ссылке ${link}: ${error.message}`);
-        return null; // Возвращаем null в случае ошибки
+        return null;
       }
     });
 
-    // Ожидаем завершения всех промисов
     allVideoData = await Promise.all(videoDetailsPromises);
-
-    // Фильтруем null значения
     allVideoData = allVideoData.filter(data => data !== null);
 
     res.send(allVideoData);
