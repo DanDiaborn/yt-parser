@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { getSubtitles } = require('youtube-captions-scraper');
+const { getSubtitles, getVideoDetails } = require('youtube-caption-extractor');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -13,17 +13,11 @@ app.use(cors());
 async function fetchSubtitlesWithPriority(videoId) {
   try {
     // Сначала пытаемся получить субтитры на русском языке
-    let subtitles = await getSubtitles({
-      videoID: videoId,
-      lang: 'ru', // Приоритетный язык - русский
-    });
+    let subtitles = await getSubtitles({ videoID: videoId, lang: 'ru' });
 
     // Если субтитров на русском нет, пробуем получить на английском
     if (!subtitles || subtitles.length === 0) {
-      subtitles = await getSubtitles({
-        videoID: videoId,
-        lang: 'en', // Запасной язык - английский
-      });
+      subtitles = await getSubtitles({ videoID: videoId, lang: 'en' });
     }
 
     // Если субтитры найдены, объединяем их в цельный текст
@@ -31,20 +25,32 @@ async function fetchSubtitlesWithPriority(videoId) {
       const formattedText = subtitles.map(sub => sub.text).join(' ');
       return formattedText;
     } else {
+      // Возвращаем сообщение без логирования в консоль
       return 'No subtitles available';
     }
   } catch (error) {
+    // Логируем ошибку только в случае реальной проблемы
+    console.error(`Error fetching subtitles for video ID ${videoId}: ${error.message}`);
     return { error: `Error fetching subtitles for video ID ${videoId}: ${error.message}` };
   }
 }
 
-app.get('/', async (req, res) => {
 
+// Функция для извлечения деталей видео
+async function fetchVideoDetails(videoId) {
+  try {
+    const videoDetails = await getVideoDetails({ videoID: videoId });
+    return videoDetails;
+  } catch (error) {
+    return { error: `Error fetching video details for video ID ${videoId}: ${error.message}` };
+  }
+}
 
+app.get('/', (req, res) => {
   res.json('ALIVE');
 });
 
-// POST endpoint для получения субтитров
+// POST endpoint для получения субтитров и деталей видео
 app.post('/captions', async (req, res) => {
   const { videoIds } = req.body;
 
@@ -54,7 +60,8 @@ app.post('/captions', async (req, res) => {
 
   const results = await Promise.all(videoIds.map(async (id) => {
     const subtitlesText = await fetchSubtitlesWithPriority(id);
-    return { videoId: id, subtitlesText };
+    const videoDetails = await fetchVideoDetails(id);
+    return { videoId: id, subtitlesText, videoDetails };
   }));
 
   res.json(results);
