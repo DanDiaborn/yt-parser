@@ -9,38 +9,31 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 app.use(cors());
 
-// Функция для извлечения субтитров с приоритетом русского языка
-async function fetchSubtitlesWithPriority(videoId) {
-  try {
-    // Сначала пытаемся получить субтитры на русском языке
-    let subtitles = await getSubtitles({
-      videoID: videoId,
-      lang: 'ru', // Приоритетный язык - русский
-    });
+// Функция для извлечения субтитров, начиная с автоматических
+async function fetchSubtitlesAuto(videoId) {
+  const languages = ['auto', 'en', 'ru', 'es', 'fr', 'de', 'id']; // Популярные языки, которые можно попробовать
+  let subtitles = null;
 
-    // Если субтитров на русском нет, пробуем получить на английском
-    if (!subtitles || subtitles.length === 0) {
+  for (const lang of languages) {
+    try {
       subtitles = await getSubtitles({
         videoID: videoId,
-        lang: 'en', // Запасной язык - английский
+        lang: lang,
       });
+      if (subtitles && subtitles.length > 0) {
+        const formattedText = subtitles.map(sub => sub.text).join(' ');
+        return formattedText; // Вернуть текст, если субтитры найдены
+      }
+    } catch (error) {
+      console.log(`Error fetching subtitles for video ${videoId} on language ${lang}: ${error.message}`);
+      continue; // Переход к следующему языку, если субтитры не найдены или возникла ошибка
     }
-
-    // Если субтитры найдены, объединяем их в цельный текст
-    if (subtitles && subtitles.length > 0) {
-      const formattedText = subtitles.map(sub => sub.text).join(' ');
-      return formattedText;
-    } else {
-      return 'No subtitles available';
-    }
-  } catch (error) {
-    return { error: `Error fetching subtitles for video ID ${videoId}: ${error.message}` };
   }
+
+  return 'No subtitles available'; // Если ни на одном языке субтитры не найдены
 }
 
 app.get('/', async (req, res) => {
-
-
   res.json('ALIVE');
 });
 
@@ -53,7 +46,7 @@ app.post('/captions', async (req, res) => {
   }
 
   const results = await Promise.all(videoIds.map(async (id) => {
-    const subtitlesText = await fetchSubtitlesWithPriority(id);
+    const subtitlesText = await fetchSubtitlesAuto(id);
     return { videoId: id, subtitlesText };
   }));
 
