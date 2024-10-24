@@ -1,13 +1,15 @@
 const express = require('express');
+const cors = require('cors');
 const { getSubtitles } = require('youtube-captions-scraper');
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
-// Middleware для обработки JSON запросов
+// Middleware для обработки JSON и CORS
 app.use(express.json());
+app.use(cors());
 
-// Функция для извлечения субтитров по ID видео на YouTube с приоритетом русского языка
+// Функция для извлечения субтитров с приоритетом русского языка
 async function fetchSubtitlesWithPriority(videoId) {
   try {
     // Сначала пытаемся получить субтитры на русском языке
@@ -54,5 +56,5 @@ app.post('/captions', async (req, res) => {
 
 // Запуск сервера
 app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+  console.log(`Server running at port ${port}`);
 });
