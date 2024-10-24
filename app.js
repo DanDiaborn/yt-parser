@@ -38,6 +38,12 @@ async function fetchSubtitlesWithPriority(videoId) {
   }
 }
 
+app.get('/', async (req, res) => {
+
+
+  res.json('ALIVE');
+});
+
 // POST endpoint для получения субтитров
 app.post('/captions', async (req, res) => {
   const { videoIds } = req.body;
