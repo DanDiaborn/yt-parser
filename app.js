@@ -10,31 +10,71 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 app.use(cors());
 
-async function delay(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+async function fetchSubtitlesAuto(videoId) {
+  const languages = ['auto', 'en', 'ru', 'es', 'fr', 'de', 'id'];
+  let subtitles = null;
+
+  for (const lang of languages) {
+    try {
+      subtitles = await getSubtitles({
+        videoID: videoId,
+        lang: lang,
+      });
+      if (subtitles && subtitles.length > 0) {
+        const formattedText = subtitles.map(sub => sub.text).join(' ');
+        return formattedText;
+      }
+    } catch (error) {
+      console.log(`Error fetching subtitles for video ${videoId} on language ${lang}: ${error.message}`);
+      continue;
+    }
+  }
+
+  return 'No subtitles available';
 }
 
 const getInstagramPostData = async (shortcode) => {
-  const url = `https://www.instagram.com/p/${shortcode}/`;
-  const userAgent = randomUserAgent.getRandom();
-  const browser = await puppeteer.launch({ headless: true });
-  const page = await browser.newPage();
+  const url = `https://www.instagram.com/p/${shortcode}/?rnd=${Math.random().toString(36).substr(2, 5)}`;
 
-  // Устанавливаем динамический User-Agent
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    executablePath: puppeteer.executablePath()
+  });
+
+  const page = await browser.newPage();
+  const userAgent = randomUserAgent.getRandom();
   await page.setUserAgent(userAgent);
+  await page.deleteCookie(...(await page.cookies()));
 
   try {
-    await delay(Math.floor(Math.random() * 5000) + 1000); // случайная пауза от 1 до 5 секунд
-    await page.goto(url, { waitUntil: 'networkidle2' });
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
 
+    // Периодическое ожидание для проверки наличия данных
     const postData = await page.evaluate(() => {
-      const title = document.querySelector('meta[property="og:description"]').getAttribute('content');
-      const date = document.querySelector('time').getAttribute('datetime');
-      return { title, date };
+      const getElementContent = (selector, attribute) => {
+        const element = document.querySelector(selector);
+        return element ? element.getAttribute(attribute) : null;
+      };
+
+      const titleMatch = getElementContent('meta[property="og:title"]', 'content') || 'Title not available';
+      const title = titleMatch.replace(/^.*?:\s*/, '')
+      const info = getElementContent('meta[property="og:description"]', 'content') || 'Description not available';
+
+      const likesMatch = info.match(/(\d+K?) likes/);
+      const likes = likesMatch ? likesMatch[1] : null;
+
+      // Регулярное выражение для извлечения числа комментариев
+      const commentsMatch = info.match(/(\d+) comments/);
+      const comments = commentsMatch ? commentsMatch[1] : null;
+
+      // Регулярное выражение для извлечения даты (формат: месяц день, год)
+      const dateMatch = info.match(/([A-Za-z]+ \d{1,2}, \d{4})/);
+      const date = dateMatch ? dateMatch[1] : null;
+
+      return { title, likes, comments, date };
     });
 
-    console.log(`Название поста: ${postData.title}`);
-    console.log(`Дата публикации: ${postData.date}`);
 
     await browser.close();
     return postData;
@@ -45,6 +85,14 @@ const getInstagramPostData = async (shortcode) => {
   }
 };
 
+
+
+const randomTimeout = (min = 500, max = 1500) => new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * (max - min + 1)) + min));
+
+app.get('/', async (req, res) => {
+  res.json('ALIVE');
+});
+
 app.post('/inst', async (req, res) => {
   const { postsIds } = req.body;
   if (!Array.isArray(postsIds)) {
@@ -52,7 +100,7 @@ app.post('/inst', async (req, res) => {
   }
 
   const results = await Promise.all(postsIds.map(async (id) => {
-    await delay(Math.floor(Math.random() * 3000) + 500); // случайная пауза от 0.5 до 3 секунд перед каждым запросом
+    await randomTimeout();
     const postInfo = await getInstagramPostData(id);
     return { videoId: id, postInfo };
   }));
@@ -60,11 +108,6 @@ app.post('/inst', async (req, res) => {
   res.json(results);
 });
 
-app.get('/', async (req, res) => {
-  res.json('ALIVE');
-});
-
-// Пример для поста субтитров
 app.post('/captions', async (req, res) => {
   const { videoIds } = req.body;
 
