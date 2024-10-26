@@ -1,14 +1,14 @@
-const express = require('express');
-const cors = require('cors');
+// const express = require('express');
+// const cors = require('cors');
 // const puppeteer = require('puppeteer');
 // const { getSubtitles } = require('youtube-captions-scraper');
 // const randomUserAgent = require('random-useragent');
 
-const app = express();
-const port = process.env.PORT || 3000;
+// const app = express();
+// const port = process.env.PORT || 3000;
 
-app.use(express.json());
-app.use(cors());
+// app.use(express.json());
+// app.use(cors());
 
 // async function fetchSubtitlesAuto(videoId) {
 //   const languages = ['auto', 'en', 'ru', 'es', 'fr', 'de', 'id'];
@@ -87,11 +87,11 @@ app.use(cors());
 
 
 
-// const randomTimeout = (min = 500, max = 1500) => new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * (max - min + 1)) + min));
+// // const randomTimeout = (min = 500, max = 1500) => new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * (max - min + 1)) + min));
 
-app.get('/', async (req, res) => {
-  res.json('ALIVE');
-});
+// app.get('/', async (req, res) => {
+//   res.json('ALIVE');
+// });
 
 // app.post('/inst', async (req, res) => {
 //   //   {"postsIds":[
@@ -130,6 +130,19 @@ app.get('/', async (req, res) => {
 //   res.json(results);
 // });
 
-app.listen(port, () => {
-  console.log(`Server running at port ${port}`);
+// app.listen(port, () => {
+//   console.log(`Server running at port ${port}`);
+// });
+
+const express = require('express');
+const app = express();
+
+const PORT = process.env.PORT || 3000;
+
+app.get('/', (req, res) => {
+  res.send('Server is running!');
+});
+
+app.listen(PORT, () => {
+  console.log(`Server is running on ${PORT}`);
 });
