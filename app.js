@@ -58,7 +58,30 @@ async function fetchSubtitlesAuto(videoId) {
         return formattedText;
       }
     } catch (error) {
-      console.log(`Error fetching subtitles for video ${videoId} on language ${lang}: ${error.message}`);
+      console.log(`Error fetching subtitles for video ${videoId} on language ${lang}:`);
+
+      // Основные данные об ошибке
+      console.log(`- Message: ${error.message}`);
+
+      // Статус ответа (если доступен)
+      if (error.response) {
+        console.log(`- Status Code: ${error.response.status}`);
+        console.log(`- Status Text: ${error.response.statusText}`);
+        console.log(`- Response Data: ${JSON.stringify(error.response.data, null, 2)}`);
+      } else {
+        console.log("- No response received from the server.");
+      }
+
+      // Информация о конфигурации запроса
+      if (error.config) {
+        console.log(`- Request URL: ${error.config.url}`);
+        console.log(`- Request Headers: ${JSON.stringify(error.config.headers, null, 2)}`);
+        console.log(`- Request Method: ${error.config.method}`);
+      }
+
+      // Стек вызовов для отладки
+      console.log(`- Stack Trace: ${error.stack}`);
+
       continue;
     }
   }
