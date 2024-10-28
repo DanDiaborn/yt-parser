@@ -87,7 +87,7 @@ const getInstagramPostData = async (shortcode) => {
 
 
 
-// const randomTimeout = (min = 500, max = 1500) => new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * (max - min + 1)) + min));
+const randomTimeout = (min = 500, max = 1500) => new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * (max - min + 1)) + min));
 
 app.get('/', async (req, res) => {
   res.json('ALIVE');
