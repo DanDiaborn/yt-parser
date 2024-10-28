@@ -143,6 +143,6 @@ app.get('/', (req, res) => {
   res.send('Server is running!');
 });
 
-app.listen(PORT, '::', () => {
-  console.log(`Server running on http://[2001:1bb0:e000:1e::23a]:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on http://195.161.68.104:${PORT}`);
 });
