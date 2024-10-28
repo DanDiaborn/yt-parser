@@ -3,6 +3,7 @@ const cors = require('cors');
 const { getSubtitles } = require('youtube-captions-scraper');
 const randomUserAgent = require('random-useragent');
 const axios = require('axios');
+const { HttpsProxyAgent } = require('https-proxy-agent');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -16,16 +17,12 @@ const proxyPort = '9999';
 const proxyUsername = 'ihu31wfnsg-corp-country-PL-state-858787-city-756135-hold-session-session-671faadc61892';
 const proxyPassword = 'hsXWenfhfCjDwacq';
 
-// Настройка прокси через axios
+// Создание прокси-агента через HttpsProxyAgent
+const proxyAgent = new HttpsProxyAgent(`http://${proxyUsername}:${proxyPassword}@${proxyHost}:${proxyPort}`);
+
+// Настройка axios с использованием прокси-агента
 const axiosInstance = axios.create({
-  proxy: {
-    host: proxyHost,
-    port: parseInt(proxyPort),
-    auth: {
-      username: proxyUsername,
-      password: proxyPassword,
-    },
-  },
+  httpsAgent: proxyAgent,
   headers: {
     'User-Agent': randomUserAgent.getRandom(),
   },
