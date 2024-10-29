@@ -96,11 +96,13 @@ app.listen(port, () => {
 const test = async () => {
   const url = 'https://youtube.com/watch?v=tR47BnpvBOM';
   try {
-    const response = await fetch(url);
-    const text = await response.text(); // Ждем разрешения промиса, чтобы получить текст
-    console.log(text); // Выводим результат в консоль
+    const response = await axios.get(url, {
+      headers: { 'User-Agent': require('random-useragent').getRandom() }, // Установка случайного User-Agent
+      timeout: 10000 // Устанавливаем таймаут в 10 секунд
+    });
+    console.log(response.data); // Выводим HTML-ответ в консоль
   } catch (error) {
-    console.error(`Error fetching data from ${url}: ${error.message}`, JSON.stringify(error, null, 2), error.stack);
+    console.error(`Error fetching data from ${url}: ${error.message}`, JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
     throw new Error(`Failed to fetch data from ${url}: ${error.message}`);
   }
 };
