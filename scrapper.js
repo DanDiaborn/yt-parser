@@ -12,7 +12,7 @@ const fetchData =
         const response = await fetch(url);
         return await response.text();
       } catch (error) {
-        console.error(`Error fetching data from ${url}: ${error.message}`);
+        console.error(`Error fetching data from ${url}: ${error.message}`, JSON.stringify(error, null, 2), error.stack);
         throw new Error(`Failed to fetch data from ${url}: ${error.message}`);
       }
     }
@@ -21,7 +21,7 @@ const fetchData =
         const { data } = await axios.get(url);
         return data;
       } catch (error) {
-        console.error(`Error fetching data from ${url}: ${error.message}`);
+        console.error(`Error fetching data from ${url}: ${error.message}`, JSON.stringify(error, null, 2), error.stack);
         throw new Error(`Failed to fetch data from ${url}: ${error.message}`);
       }
     };
@@ -36,6 +36,7 @@ async function getSubtitles({
       `https://youtube.com/watch?v=${videoID}`
     );
   } catch (error) {
+    console.error(`Failed to fetch video data for ${videoID}: ${error.message}`, JSON.stringify(error, null, 2), error.stack);
     throw new Error(`Failed to fetch video data for ${videoID}: ${error.message}`);
   }
 
@@ -50,6 +51,7 @@ async function getSubtitles({
   try {
     captionTracks = JSON.parse(`{${match}}`).captionTracks;
   } catch (error) {
+    console.error(`Failed to parse caption tracks for video: ${videoID}. Error: ${error.message}`, JSON.stringify(error, null, 2), error.stack);
     throw new Error(`Failed to parse caption tracks for video: ${videoID}. Error: ${error.message}`);
   }
 
@@ -70,6 +72,7 @@ async function getSubtitles({
   try {
     transcript = await fetchData(subtitle.baseUrl);
   } catch (error) {
+    console.error(`Failed to fetch subtitle data for ${videoID} in ${lang}: ${error.message}`, JSON.stringify(error, null, 2), error.stack);
     throw new Error(`Failed to fetch subtitle data for ${videoID} in ${lang}: ${error.message}`);
   }
 
@@ -102,6 +105,5 @@ async function getSubtitles({
 
   return lines;
 }
-
 
 module.exports = { getSubtitles };
