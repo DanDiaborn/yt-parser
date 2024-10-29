@@ -1,10 +1,12 @@
+// Импорт необходимых модулей
+const he = require('he');
 const axios = require('axios');
+const { find } = require('lodash');
+const striptags = require('striptags');
 const { HttpsProxyAgent } = require('https-proxy-agent');
 const randomUserAgent = require('random-useragent');
-const he = require('he');
-const striptags = require('striptags');
 
-// Прокси-настройки
+// Настройки прокси
 const proxyHost = '93.190.142.57';
 const proxyPort = '9999';
 const proxyUsername = 'ihu31wfnsg-corp-country-PL-state-858787-city-756135-hold-session-session-671faadc61892';
@@ -14,28 +16,26 @@ const proxyPassword = 'hsXWenfhfCjDwacq';
 const proxyUrl = `http://${proxyUsername}:${proxyPassword}@${proxyHost}:${proxyPort}`;
 const agent = new HttpsProxyAgent(proxyUrl);
 
-// Создаем экземпляр axios с прокси-настройками
+// Настраиваем экземпляр axios с прокси
 const axiosInstance = axios.create({
   httpsAgent: agent,
   headers: {
     'User-Agent': randomUserAgent.getRandom(),
   },
   timeout: 10000, // Таймаут для предотвращения зависания
-  family: 4, // Принудительно используем IPv4
 });
 
-// Функция для запроса данных
-const fetchData = async function (url) {
+// Функция fetchData с поддержкой axios и прокси
+const fetchData = async function fetchData(url) {
   try {
-    const response = await axiosInstance.get(url);
-    return response.data;
+    const { data } = await axiosInstance.get(url);
+    return data;
   } catch (error) {
     console.error(`Error fetching data from ${url}: ${error.message}`, JSON.stringify(error, null, 2), error.stack);
     throw new Error(`Failed to fetch data from ${url}: ${error.message}`);
   }
 };
 
-// Функция получения субтитров
 async function getSubtitles({ videoID, lang = 'en' }) {
   let data;
   try {
@@ -45,7 +45,7 @@ async function getSubtitles({ videoID, lang = 'en' }) {
     throw new Error(`Failed to fetch video data for ${videoID}: ${error.message}`);
   }
 
-  // Проверка наличия данных субтитров
+  // * ensure we have access to captions data
   if (!data.includes('captionTracks'))
     throw new Error(`Could not find captions for video: ${videoID}`);
 
@@ -61,12 +61,16 @@ async function getSubtitles({ videoID, lang = 'en' }) {
   }
 
   const subtitle =
-    captionTracks.find(track => track.vssId === `.${lang}`) ||
-    captionTracks.find(track => track.vssId === `a.${lang}`) ||
-    captionTracks.find(track => track.vssId && track.vssId.includes(`.${lang}`));
+    find(captionTracks, { vssId: `.${lang}` }) ||
+    find(captionTracks, { vssId: `a.${lang}` }) ||
+    find(captionTracks, ({ vssId }) => vssId && vssId.match(`.${lang}`));
 
-  if (!subtitle || !subtitle.baseUrl)
+  // * ensure we have found the correct subtitle lang
+  if (!subtitle || (subtitle && !subtitle.baseUrl))
     throw new Error(`Could not find ${lang} captions for ${videoID}`);
+
+  console.log('URL');
+  console.log(subtitle.baseUrl);
 
   let transcript;
   try {
