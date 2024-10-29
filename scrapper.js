@@ -1,48 +1,51 @@
-/* @flow */
-
 const axios = require('axios');
+const { HttpsProxyAgent } = require('https-proxy-agent');
+const randomUserAgent = require('random-useragent');
+const he = require('he');
+const striptags = require('striptags');
 
-const fetchData =
-  typeof fetch === 'function'
-    ? async function fetchData(url) {
-      try {
-        const response = await fetch(url);
-        return await response.text();
-      } catch (error) {
-        console.error(`Error fetching data from ${url}: ${error.message}`, JSON.stringify(error, null, 2), error.stack);
-        throw new Error(`Failed to fetch data from ${url}: ${error.message}`);
-      }
-    }
-    : async function fetchData(url) {
-      try {
-        const { data } = await axios.get(url, {
-          headers: { 'User-Agent': randomUserAgent.getRandom() },
-          timeout: 10000, // Устанавливаем тайм-аут на 10 секунд
-          family: 4 // Принудительно используем IPv4
-        });
-        return data;
-      } catch (error) {
-        console.error(`Error fetching data from ${url}: ${error.message}`, JSON.stringify(error, null, 2), error.stack);
-        throw new Error(`Failed to fetch data from ${url}: ${error.message}`);
-      }
-    };
+// Прокси-настройки
+const proxyHost = '93.190.142.57';
+const proxyPort = '9999';
+const proxyUsername = 'ihu31wfnsg-corp-country-PL-state-858787-city-756135-hold-session-session-671faadc61892';
+const proxyPassword = 'hsXWenfhfCjDwacq';
 
+// Создаем строку прокси-URL с аутентификацией
+const proxyUrl = `http://${proxyUsername}:${proxyPassword}@${proxyHost}:${proxyPort}`;
+const agent = new HttpsProxyAgent(proxyUrl);
 
-async function getSubtitles({
-  videoID,
-  lang = 'en',
-}) {
+// Создаем экземпляр axios с прокси-настройками
+const axiosInstance = axios.create({
+  httpsAgent: agent,
+  headers: {
+    'User-Agent': randomUserAgent.getRandom(),
+  },
+  timeout: 10000, // Таймаут для предотвращения зависания
+  family: 4, // Принудительно используем IPv4
+});
+
+// Функция для запроса данных
+const fetchData = async function (url) {
+  try {
+    const response = await axiosInstance.get(url);
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching data from ${url}: ${error.message}`, JSON.stringify(error, null, 2), error.stack);
+    throw new Error(`Failed to fetch data from ${url}: ${error.message}`);
+  }
+};
+
+// Функция получения субтитров
+async function getSubtitles({ videoID, lang = 'en' }) {
   let data;
   try {
-    data = await fetchData(
-      `https://youtube.com/watch?v=${videoID}`
-    );
+    data = await fetchData(`https://youtube.com/watch?v=${videoID}`);
   } catch (error) {
     console.error(`Failed to fetch video data for ${videoID}: ${error.message}`, JSON.stringify(error, null, 2), error.stack);
     throw new Error(`Failed to fetch video data for ${videoID}: ${error.message}`);
   }
 
-  // * ensure we have access to captions data
+  // Проверка наличия данных субтитров
   if (!data.includes('captionTracks'))
     throw new Error(`Could not find captions for video: ${videoID}`);
 
@@ -58,16 +61,11 @@ async function getSubtitles({
   }
 
   const subtitle =
-    find(captionTracks, {
-      vssId: `.${lang}`,
-    }) ||
-    find(captionTracks, {
-      vssId: `a.${lang}`,
-    }) ||
-    find(captionTracks, ({ vssId }) => vssId && vssId.match(`.${lang}`));
+    captionTracks.find(track => track.vssId === `.${lang}`) ||
+    captionTracks.find(track => track.vssId === `a.${lang}`) ||
+    captionTracks.find(track => track.vssId && track.vssId.includes(`.${lang}`));
 
-  // * ensure we have found the correct subtitle lang
-  if (!subtitle || (subtitle && !subtitle.baseUrl))
+  if (!subtitle || !subtitle.baseUrl)
     throw new Error(`Could not find ${lang} captions for ${videoID}`);
 
   let transcript;
