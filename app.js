@@ -91,3 +91,17 @@ app.listen(port, () => {
   console.log(`Server running on http://195.161.68.104:49234`);
 });
 
+
+
+const test = async () => {
+  const url = 'https://youtube.com/watch?v=sbMOkHeGcug';
+  try {
+    const response = await axiosInstance.get(url);
+    console.log(response.data);
+  } catch (error) {
+    console.error(`Error fetching data from ${url}: ${error.message}`, JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+    throw new Error(`Failed to fetch data from ${url}: ${error.message}`);
+  }
+};
+
+test();
