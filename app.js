@@ -1,8 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const puppeteer = require('puppeteer');
-const { getSubtitles } = require('youtube-captions-scraper');
-// const { getSubtitles } = require('./scrapper.js');
+// const { getSubtitles } = require('youtube-captions-scraper');
+const { getSubtitles } = require('./scrapper.js');
 const randomUserAgent = require('random-useragent');
 const axios = require('axios');
 
