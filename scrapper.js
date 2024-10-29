@@ -1,9 +1,13 @@
 /* @flow */
 
-const he = require('he');
 const axios = require('axios');
-const { find } = require('lodash');
-const striptags = require('striptags');
+const { HttpsProxyAgent } = require('https-proxy-agent');
+
+// Настраиваем агент для IPv4
+const agent = new HttpsProxyAgent({
+  keepAlive: true,
+  family: 4, // Принудительное использование IPv4
+});
 
 const fetchData =
   typeof fetch === 'function'
@@ -18,7 +22,11 @@ const fetchData =
     }
     : async function fetchData(url) {
       try {
-        const { data } = await axios.get(url);
+        const { data } = await axios.get(url, {
+          httpsAgent: agent, // Устанавливаем агент для IPv4
+          headers: { 'User-Agent': randomUserAgent.getRandom() },
+          timeout: 10000, // увеличиваем тайм-аут до 10 секунд для устойчивости к таймаутам
+        });
         return data;
       } catch (error) {
         console.error(`Error fetching data from ${url}: ${error.message}`, JSON.stringify(error, null, 2), error.stack);
