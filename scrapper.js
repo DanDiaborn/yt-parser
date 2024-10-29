@@ -1,13 +1,6 @@
 /* @flow */
 
 const axios = require('axios');
-const { HttpsProxyAgent } = require('https-proxy-agent');
-
-// Настраиваем агент для IPv4
-const agent = new HttpsProxyAgent({
-  keepAlive: true,
-  family: 4, // Принудительное использование IPv4
-});
 
 const fetchData =
   typeof fetch === 'function'
@@ -23,9 +16,9 @@ const fetchData =
     : async function fetchData(url) {
       try {
         const { data } = await axios.get(url, {
-          httpsAgent: agent, // Устанавливаем агент для IPv4
           headers: { 'User-Agent': randomUserAgent.getRandom() },
-          timeout: 10000, // увеличиваем тайм-аут до 10 секунд для устойчивости к таймаутам
+          timeout: 10000, // Устанавливаем тайм-аут на 10 секунд
+          family: 4 // Принудительно используем IPv4
         });
         return data;
       } catch (error) {
@@ -33,6 +26,7 @@ const fetchData =
         throw new Error(`Failed to fetch data from ${url}: ${error.message}`);
       }
     };
+
 
 async function getSubtitles({
   videoID,
