@@ -1,8 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const puppeteer = require('puppeteer');
-// const { getSubtitles } = require('youtube-captions-scraper');
-const { getSubtitles } = require('./scrapper.js');
+const { getSubtitles } = require('youtube-captions-scraper');
+// const { getSubtitles } = require('./scrapper.js');
 const randomUserAgent = require('random-useragent');
 const axios = require('axios');
 
@@ -15,36 +15,33 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 app.use(cors());
 
-// Прокси-настройки
-// const proxyHost = '93.190.142.57';
-// const proxyPort = '9999';
-// const proxyUsername = 'ihu31wfnsg-corp-country-PL-state-858787-city-756135-hold-session-session-671faadc61892';
-// const proxyPassword = 'hsXWenfhfCjDwacq';
+const proxyHost = '93.190.142.57';
+const proxyPort = '9999';
+const proxyUsername = 'ihu31wfnsg-corp-country-PL-state-858787-city-756135-hold-session-session-671faadc61892';
+const proxyPassword = 'hsXWenfhfCjDwacq';
 
-// // Настройка прокси через axios
-// const axiosInstance = axios.create({
-//   proxy: {
-//     host: proxyHost,
-//     port: parseInt(proxyPort),
-//     auth: {
-//       username: proxyUsername,
-//       password: proxyPassword,
-//     },
-//   },
-//   headers: {
-//     'User-Agent': randomUserAgent.getRandom(),
-//   },
-// });
+// Создаем строку прокси-URL с аутентификацией
+const proxyUrl = `http://${proxyUsername}:${proxyPassword}@${proxyHost}:${proxyPort}`;
+const agent = new HttpsProxyAgent(proxyUrl);
 
-// Маршрут для проверки IP
-app.get('/check-ip', async (req, res) => {
-  try {
-    const response = await axiosInstance.get('https://api.ipify.org?format=json');
-    res.json({ proxyIP: response.data.ip });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch IP through proxy', details: error.message });
-  }
+// Устанавливаем надежный User-Agent вручную
+const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36';
+
+// Создаем экземпляр axios с прокси-настройками и дополнительными заголовками
+const axiosInstance = axios.create({
+  httpsAgent: agent,
+  headers: {
+    'User-Agent': userAgent,
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+    'Upgrade-Insecure-Requests': '1',
+    'Connection': 'keep-alive',
+    'DNT': '1',
+    'Referer': 'https://www.google.com/',
+  },
+  timeout: 10000, // Таймаут для предотвращения зависания
 });
+
 
 async function fetchSubtitlesAuto(videoId) {
   const languages = ['auto', 'pl', 'en', 'ru', 'es', 'fr', 'de', 'id'];
@@ -93,48 +90,4 @@ app.post('/captions', async (req, res) => {
 app.listen(port, () => {
   console.log(`Server running on http://195.161.68.104:49234`);
 });
-
-// const axios = require('axios');
-// const { HttpsProxyAgent } = require('https-proxy-agent');
-// const randomUserAgent = require('random-useragent');
-
-const proxyHost = '93.190.142.57';
-const proxyPort = '9999';
-const proxyUsername = 'ihu31wfnsg-corp-country-PL-state-858787-city-756135-hold-session-session-671faadc61892';
-const proxyPassword = 'hsXWenfhfCjDwacq';
-
-// Создаем строку прокси-URL с аутентификацией
-const proxyUrl = `http://${proxyUsername}:${proxyPassword}@${proxyHost}:${proxyPort}`;
-const agent = new HttpsProxyAgent(proxyUrl);
-
-// Устанавливаем надежный User-Agent вручную
-const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36';
-
-// Создаем экземпляр axios с прокси-настройками и дополнительными заголовками
-const axiosInstance = axios.create({
-  httpsAgent: agent,
-  headers: {
-    'User-Agent': userAgent,
-    'Accept-Language': 'en-US,en;q=0.9',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-    'Upgrade-Insecure-Requests': '1',
-    'Connection': 'keep-alive',
-    'DNT': '1',
-    'Referer': 'https://www.google.com/',
-  },
-  timeout: 10000, // Таймаут для предотвращения зависания
-});
-
-const test = async () => {
-  const url = 'https://youtube.com/watch?v=sbMOkHeGcug';
-  try {
-    const response = await axiosInstance.get(url);
-    console.log(response.data);
-  } catch (error) {
-    console.error(`Error fetching data from ${url}: ${error.message}`, JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
-    throw new Error(`Failed to fetch data from ${url}: ${error.message}`);
-  }
-};
-
-test();
 

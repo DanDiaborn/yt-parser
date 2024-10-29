@@ -16,11 +16,20 @@ const proxyPassword = 'hsXWenfhfCjDwacq';
 const proxyUrl = `http://${proxyUsername}:${proxyPassword}@${proxyHost}:${proxyPort}`;
 const agent = new HttpsProxyAgent(proxyUrl);
 
-// Настраиваем экземпляр axios с прокси
+// Устанавливаем надежный User-Agent вручную
+const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36';
+
+// Создаем экземпляр axios с прокси-настройками и дополнительными заголовками
 const axiosInstance = axios.create({
   httpsAgent: agent,
   headers: {
-    'User-Agent': randomUserAgent.getRandom(),
+    'User-Agent': userAgent,
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+    'Upgrade-Insecure-Requests': '1',
+    'Connection': 'keep-alive',
+    'DNT': '1',
+    'Referer': 'https://www.google.com/',
   },
   timeout: 10000, // Таймаут для предотвращения зависания
 });
