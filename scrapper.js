@@ -8,12 +8,22 @@ const striptags = require('striptags');
 const fetchData =
   typeof fetch === 'function'
     ? async function fetchData(url) {
-      const response = await fetch(url);
-      return await response.text();
+      try {
+        const response = await fetch(url);
+        return await response.text();
+      } catch (error) {
+        console.error(`Error fetching data from ${url}: ${error.message}`);
+        throw new Error(`Failed to fetch data from ${url}: ${error.message}`);
+      }
     }
     : async function fetchData(url) {
-      const { data } = await axios.get(url);
-      return data;
+      try {
+        const { data } = await axios.get(url);
+        return data;
+      } catch (error) {
+        console.error(`Error fetching data from ${url}: ${error.message}`);
+        throw new Error(`Failed to fetch data from ${url}: ${error.message}`);
+      }
     };
 
 async function getSubtitles({
