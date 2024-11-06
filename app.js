@@ -1,10 +1,12 @@
 const express = require('express');
 const cors = require('cors');
 const puppeteer = require('puppeteer');
-// const { getSubtitles } = require('youtube-captions-scraper');
 const { getSubtitles } = require('./scrapper.js');
 const randomUserAgent = require('random-useragent');
 const axios = require('axios');
+const { Worker } = require('worker_threads');
+
+
 
 const { HttpsProxyAgent } = require('https-proxy-agent');
 
@@ -68,8 +70,30 @@ async function fetchSubtitlesAuto(videoId) {
   return 'No subtitles available';
 }
 
+function runWorker(path, item) {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(path, {
+      workerData: {
+        ...item,
+        PATH: process.env.PATH // Передаем PATH в workerData
+      }
+    });
+
+    worker.on('message', message => console.log(message));
+    worker.on('error', reject);
+    worker.on('exit', code => {
+      if (code !== 0) {
+        reject(new Error(`Worker завершился с кодом ошибки: ${code}`));
+      } else {
+        resolve(`Worker завершил обработку для ${item.title}`);
+      }
+    });
+  });
+}
+
+
 app.get('/', async (req, res) => {
-  res.json('ALIVE');
+  res.json('NEW ALIVE');
 });
 
 app.post('/captions', async (req, res) => {
@@ -85,6 +109,49 @@ app.post('/captions', async (req, res) => {
   }));
 
   res.json(results);
+});
+
+app.post('/bison-comments', (req, res) => {
+  const data = req.body;
+
+  if (!Array.isArray(data)) {
+    return res.status(400).json({ error: "Неверный формат данных. Ожидается массив объектов." });
+  }
+
+  // Отправляем ответ клиенту сразу
+  res.json({ message: 'Запрос принят. Воркеры выполняются в фоновом режиме.' });
+
+  // Запускаем воркеры в фоновом режиме
+  Promise.all(data.map(item => runWorker('./commentsWorker.js', item)))
+    .then(results => {
+      console.log('Воркеры завершили работу:', results);
+      // Здесь можно добавить дополнительную логику по обработке результатов
+    })
+    .catch(error => {
+      console.error(`Ошибка при выполнении воркеров: ${error.message}`);
+    });
+});
+
+
+app.post('/bison-audio', (req, res) => {
+  const data = req.body;
+
+  if (!Array.isArray(data)) {
+    return res.status(400).json({ error: "Неверный формат данных. Ожидается массив объектов." });
+  }
+
+  // Отправляем ответ клиенту сразу
+  res.json({ message: 'Запрос принят. Воркеры выполняются в фоновом режиме.' });
+
+  // Запускаем воркеры в фоновом режиме
+  Promise.all(data.map(item => runWorker('./audioWorker.js', item)))
+    .then(results => {
+      console.log('Воркеры завершили работу:', results);
+      // Здесь можно добавить дополнительную логику по обработке результатов
+    })
+    .catch(error => {
+      console.error(`Ошибка при выполнении воркеров: ${error.message}`);
+    });
 });
 
 app.listen(port, () => {
