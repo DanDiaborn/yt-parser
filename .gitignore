@@ -11,6 +11,7 @@ izibizi-352900-a2cdb2e0d471.json
 # Системные файлы
 .DS_Store
 Thumbs.db
+audio/
 
 # Директории сборки
 dist/
