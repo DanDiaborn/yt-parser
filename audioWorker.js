@@ -39,9 +39,17 @@ async function uploadToStorage(filePath, destination) {
   const storagePath = `comments/${safeTitle}.mp3`;
 
   const browser = await puppeteer.launch({
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      `--proxy-server=${workerData.proxyHost}:${workerData.proxyPort}`
+    ]
   });
   const page = await browser.newPage();
+  await page.authenticate({
+    username: workerData.proxyUsername,
+    password: workerData.proxyPassword
+  });
 
   try {
     await page.goto(url, { waitUntil: 'networkidle2' });

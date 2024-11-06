@@ -69,13 +69,16 @@ async function fetchSubtitlesAuto(videoId) {
 
   return 'No subtitles available';
 }
-
 function runWorker(path, item) {
   return new Promise((resolve, reject) => {
     const worker = new Worker(path, {
       workerData: {
         ...item,
-        PATH: process.env.PATH // Передаем PATH в workerData
+        PATH: process.env.PATH, // Передаем PATH в workerData,
+        proxyHost,
+        proxyPort,
+        proxyUsername,
+        proxyPassword
       }
     });
 
