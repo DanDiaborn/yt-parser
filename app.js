@@ -6,6 +6,8 @@ const randomUserAgent = require('random-useragent');
 const axios = require('axios');
 const { Worker } = require('worker_threads');
 
+const dns = require('dns');
+dns.setDefaultResultOrder('ipv4first');
 
 
 const { HttpsProxyAgent } = require('https-proxy-agent');

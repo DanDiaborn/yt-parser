@@ -5,6 +5,9 @@ const ffmpeg = require('fluent-ffmpeg');
 const fs = require('fs');
 const path = require('path');
 
+const dns = require('dns');
+dns.setDefaultResultOrder('ipv4first');
+
 // Установка PATH в worker thread, если он передан в workerData
 if (!process.env.PATH && workerData.PATH) {
   process.env.PATH = workerData.PATH;
