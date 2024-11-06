@@ -3,8 +3,17 @@ const { parentPort, workerData } = require('worker_threads');
 const puppeteer = require('puppeteer');
 const { Storage } = require('@google-cloud/storage');
 
+const dns = require('dns');
+dns.setDefaultResultOrder('ipv4first');
+
+
 const keyFilePath = './izibizi-352900-a2cdb2e0d471.json';
-const storage = new Storage({ keyFilename: keyFilePath });
+const storage = new Storage({
+  keyFilename: keyFilePath,
+  clientOptions: {
+    family: 4,
+  },
+});
 const bucketName = 'powerdatabucket';
 
 async function uploadToStorage(data, destination) {

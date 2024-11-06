@@ -40,22 +40,22 @@ async function uploadToStorage(filePath, destination) {
   console.log(`Uploaded audio to ${bucketName}/${destination}`);
 }
 
-async function testConnection() {
-  try {
-    // Попробуем получить список файлов из указанного bucket
-    const [files] = await storage.bucket(bucketName).getFiles({ maxResults: 1 });
-    if (files.length > 0) {
-      console.log(`Подключение успешно, найден файл: ${files[0].name}`);
-    } else {
-      console.log(`Подключение успешно, но файлы в ${bucketName} не найдены`);
-    }
-  } catch (error) {
-    console.error('Ошибка подключения к Google Cloud Storage:', error.message);
-  }
-}
+// async function testConnection() {
+//   try {
+//     // Попробуем получить список файлов из указанного bucket
+//     const [files] = await storage.bucket(bucketName).getFiles({ maxResults: 1 });
+//     if (files.length > 0) {
+//       console.log(`Подключение успешно, найден файл: ${files[0].name}`);
+//     } else {
+//       console.log(`Подключение успешно, но файлы в ${bucketName} не найдены`);
+//     }
+//   } catch (error) {
+//     console.error('Ошибка подключения к Google Cloud Storage:', error.message);
+//   }
+// }
 
 (async () => {
-  testConnection();
+  // testConnection();
 
   const { url, author, title } = workerData;
   const safeTitle = title.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
