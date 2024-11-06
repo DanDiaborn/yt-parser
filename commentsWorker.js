@@ -19,7 +19,9 @@ async function uploadToStorage(data, destination) {
   console.log(`Uploaded data to ${bucketName}/${destination}`);
 }
 
+
 (async () => {
+  // Запускаем проверку подключения
   const { url, author, title } = workerData;
   const safeTitle = title.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
   const storagePath = `comments/${safeTitle}.json`;
