@@ -24,7 +24,9 @@ async function uploadToStorage(data, destination) {
   const safeTitle = title.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
   const storagePath = `comments/${safeTitle}.json`;
 
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  });
   const page = await browser.newPage();
   let lastCommentTime = Date.now();
   let commentsList = [];

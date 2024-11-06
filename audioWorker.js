@@ -38,7 +38,9 @@ async function uploadToStorage(filePath, destination) {
   const localAudioPath = path.resolve(audioFolder, `audio_${safeTitle}.mp3`);
   const storagePath = `comments/${safeTitle}.mp3`;
 
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  });
   const page = await browser.newPage();
 
   try {
