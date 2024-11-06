@@ -11,7 +11,12 @@ if (!process.env.PATH && workerData.PATH) {
 }
 
 const keyFilePath = './izibizi-352900-a2cdb2e0d471.json';
-const storage = new Storage({ keyFilename: keyFilePath });
+const storage = new Storage({
+  keyFilename: keyFilePath,
+  clientOptions: {
+    family: 4,
+  },
+});
 const bucketName = 'powerdatabucket';
 
 // Убедимся, что папка audio существует, если нет — создадим ее
