@@ -17,6 +17,11 @@ const storage = new Storage({
 const bucketName = 'powerdatabucket';
 
 async function uploadToStorage(data, destination) {
+  if (!data || Object.keys(data).length === 0) {  // Проверка на пустоту данных
+    console.log('Данные пусты. Загрузка не выполнена.');
+    return;
+  }
+
   const bucket = storage.bucket(bucketName);
   const file = bucket.file(destination);
 
