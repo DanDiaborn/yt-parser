@@ -33,7 +33,7 @@ async function uploadToStorage(data, destination) {
   // Запускаем проверку подключения
   const { url, author, title } = workerData;
   const safeTitle = title.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
-  const storagePath = `comments/${safeTitle}.json`;
+  const storagePath = `${author}/${safeTitle}/${safeTitle}.json`;
 
   const browser = await puppeteer.launch({
     args: [
