@@ -45,6 +45,7 @@ async function uploadToStorage(data, destination) {
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
+      '--disable-gpu',
       `--proxy-server=${workerData.proxyHost}:${workerData.proxyPort}`
     ]
   });

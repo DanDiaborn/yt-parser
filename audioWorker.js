@@ -51,6 +51,7 @@ async function uploadToStorage(filePath, destination) {
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
+      '--disable-gpu',
       `--proxy-server=${workerData.proxyHost}:${workerData.proxyPort}`
     ]
   });
@@ -61,7 +62,7 @@ async function uploadToStorage(filePath, destination) {
   });
 
   try {
-    await page.goto(url, { waitUntil: 'networkidle2' });
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
 
     // Заполнение формы
     await page.evaluate(() => {
