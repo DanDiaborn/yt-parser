@@ -1,4 +1,5 @@
-// worker.js
+const axios = require('axios');
+
 const { parentPort, workerData } = require('worker_threads');
 const puppeteer = require('puppeteer');
 const { Storage } = require('@google-cloud/storage');
@@ -17,7 +18,7 @@ const storage = new Storage({
 const bucketName = 'powerdatabucket';
 
 async function uploadToStorage(data, destination) {
-  if (!data || Object.keys(data).length === 0) {  // Проверка на пустоту данных
+  if (!data.comments || Object.keys(data.comments).length === 0) {  // Проверка на пустоту данных
     console.log('Данные пусты. Загрузка не выполнена.');
     return;
   }
@@ -94,6 +95,10 @@ async function uploadToStorage(data, destination) {
           // console.log(`Новый комментарий от ${comment.userName}: "${comment.msg}"`);
         }
       });
+      // await axios.post(`http://localhost:49234/update-comment-count`, {
+      //   title,
+      //   count: commentsList.length
+      // });
       console.log(`${commentsList.length} комментариев у ролика ${title}`);
     };
 

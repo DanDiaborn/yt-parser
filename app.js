@@ -96,6 +96,13 @@ function runWorker(path, item) {
   });
 }
 
+// const commentCounts = {}; // Сохраняет количество комментариев для каждого видео или автора
+
+// app.get('/comment-count', (req, res) => {
+//   const { title } = req.query;
+//   const count = commentCounts[title] || 0;
+//   res.json({ title, count });
+// });
 
 app.get('/', async (req, res) => {
   res.json('NEW ALIVE');
@@ -158,6 +165,12 @@ app.post('/bison-audio', (req, res) => {
       console.error(`Ошибка при выполнении воркеров: ${error.message}`);
     });
 });
+
+// app.post('/update-comment-count', (req, res) => {
+//   const { title, count } = req.body;
+//   commentCounts[title] = count;
+//   res.json({ message: `Количество комментариев обновлено для ${title}: ${count}` });
+// });
 
 app.listen(port, () => {
   console.log(`Server running on http://195.161.68.104:49234`);
