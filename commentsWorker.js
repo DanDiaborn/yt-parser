@@ -121,8 +121,8 @@ async function uploadToStorage(data, destination) {
       });
 
       await uploadToStorage(dataToSend, storagePath);
-      console.log(`Комментарии сохранены в хранилище для ${title} каждые 5 минут.`);
-    }, 5 * 60 * 1000); // 5 минут
+      console.log(`${commentsList.length} ТЕСТ для ${title} `);
+    }, 10 * 1000); // 5 минут
 
     await fetchAndSaveComments();
 
