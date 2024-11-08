@@ -1,12 +1,10 @@
 const axios = require('axios');
-
 const { parentPort, workerData } = require('worker_threads');
 const puppeteer = require('puppeteer');
 const { Storage } = require('@google-cloud/storage');
-
 const dns = require('dns');
-dns.setDefaultResultOrder('ipv4first');
 
+dns.setDefaultResultOrder('ipv4first');
 
 const keyFilePath = './izibizi-352900-a2cdb2e0d471.json';
 const storage = new Storage({
@@ -18,7 +16,7 @@ const storage = new Storage({
 const bucketName = 'powerdatabucket';
 
 async function uploadToStorage(data, destination) {
-  if (!data.comments || Object.keys(data.comments).length === 0) {  // Проверка на пустоту данных
+  if (!data.comments || Object.keys(data.comments).length === 0) {
     console.log('Данные пусты. Загрузка не выполнена.');
     return;
   }
@@ -34,9 +32,7 @@ async function uploadToStorage(data, destination) {
   console.log(`Uploaded data to ${bucketName}/${destination}`);
 }
 
-
 (async () => {
-  // Запускаем проверку подключения
   const { url, author, title } = workerData;
   const safeTitle = title.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
   const storagePath = `test/${author}/${safeTitle}/${safeTitle}.json`;
@@ -93,13 +89,8 @@ async function uploadToStorage(data, destination) {
         )) {
           commentsList.push(comment);
           lastCommentTime = Date.now();
-          // console.log(`Новый комментарий от ${comment.userName}: "${comment.msg}"`);
         }
       });
-      // await axios.post(`http://localhost:49234/update-comment-count`, {
-      //   title,
-      //   count: commentsList.length
-      // });
       console.log(`${commentsList.length} комментариев у ролика ${title}`);
     };
 
@@ -122,23 +113,22 @@ async function uploadToStorage(data, destination) {
       }
     }, 10000);
 
+    const uploadIntervalId = setInterval(async () => {
+      const dataToSend = JSON.stringify({
+        comments: commentsList,
+        author,
+        title,
+      });
+
+      await uploadToStorage(dataToSend, storagePath);
+      console.log(`Комментарии сохранены в хранилище для ${title} каждые 5 минут.`);
+    }, 5 * 60 * 1000); // 5 минут
+
     await fetchAndSaveComments();
-
-    // page.on('framenavigated', async () => {
-    //   const dataToSend = JSON.stringify({
-    //     comments: commentsList,
-    //     author,
-    //     title,
-    //   });
-
-    //   await uploadToStorage(dataToSend, storagePath);
-    //   clearInterval(intervalId);
-    //   await browser.close();
-    //   parentPort.postMessage(`Завершение работы воркера для ${title} из-за отсутствия новых комментариев`);
-    // });
 
     parentPort.on('exit', async () => {
       clearInterval(intervalId);
+      clearInterval(uploadIntervalId);
       await browser.close();
     });
 
