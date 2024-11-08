@@ -16,7 +16,6 @@ const storage = new Storage({
 const bucketName = 'powerdatabucket';
 
 async function uploadToStorage(data, destination) {
-  console.log(Object.keys(data.comments).length, '---', data.comments.length)
   if (!data.comments || Object.keys(data.comments).length === 0) {
     console.log('Данные пусты. Загрузка не выполнена.');
     return;
@@ -56,7 +55,7 @@ async function uploadToStorage(data, destination) {
   let commentsList = [];
 
   try {
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.goto(url, { waitUntil: 'networkidle2' });
 
     await page.evaluate(() => {
       document.querySelector('input[name="formParams[first_name]"]').value = 'Алексей';
@@ -114,16 +113,16 @@ async function uploadToStorage(data, destination) {
       }
     }, 10000);
 
-    const uploadIntervalId = setInterval(async () => {
-      const dataToSend = JSON.stringify({
-        comments: commentsList,
-        author,
-        title,
-      });
+    // const uploadIntervalId = setInterval(async () => {
+    //   const dataToSend = JSON.stringify({
+    //     comments: commentsList,
+    //     author,
+    //     title,
+    //   });
 
-      await uploadToStorage(dataToSend, storagePath);
-      console.log(`Комментарии сохранены в хранилище для ${title} каждые 5 минут.`);
-    }, 10 * 1000); // 5 минут
+    //   await uploadToStorage(dataToSend, storagePath);
+    //   console.log(`Комментарии сохранены в хранилище для ${title} каждые 5 минут.`);
+    // }, 5 * 60 * 1000); // 5 минут
 
     await fetchAndSaveComments();
 
