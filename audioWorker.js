@@ -69,7 +69,7 @@ async function uploadToStorage(filePath, destination) {
     });
 
     await page.click('.btn.f-btn.button-md.btn-success');
-    await page.waitForTimeout(1000);
+    await delay(1000);
 
     const frame = await getIframeContentFrame(page);
 
@@ -114,7 +114,11 @@ async function uploadToStorage(filePath, destination) {
   }
 })();
 
-async function getIframeContentFrame(page, retries = 5, delay = 5000) {
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function getIframeContentFrame(page, retries = 5, delayTime = 5000) {
   let iframeElement = await page.$('iframe.embed-responsive-item');
   if (iframeElement) {
     const frame = await iframeElement.contentFrame();
@@ -122,9 +126,9 @@ async function getIframeContentFrame(page, retries = 5, delay = 5000) {
   }
 
   if (retries > 0) {
-    console.log(`Iframe не найден, повторная попытка через ${delay / 1000} секунд... Осталось попыток: ${retries}`);
-    await page.waitForTimeout(delay);
-    return getIframeContentFrame(page, retries - 1, delay);
+    console.log(`Iframe не найден, повторная попытка через ${delayTime / 1000} секунд... Осталось попыток: ${retries}`);
+    await delay(delayTime);
+    return getIframeContentFrame(page, retries - 1, delayTime);
   }
 
   throw new Error('Не удалось получить доступ к iframe после нескольких попыток');
