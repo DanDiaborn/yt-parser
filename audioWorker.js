@@ -45,7 +45,7 @@ async function uploadToStorage(filePath, destination) {
   const { url, author, title } = workerData;
   const safeTitle = title.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
   const localAudioPath = path.resolve(audioFolder, `audio_${safeTitle}.mp3`);
-  const storagePath = `${author}/${safeTitle}/${safeTitle}.mp3`;
+  const storagePath = `test/${author}/${safeTitle}/${safeTitle}.mp3`;
 
   const browser = await puppeteer.launch({
     args: [
