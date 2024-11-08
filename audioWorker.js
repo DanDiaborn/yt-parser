@@ -62,7 +62,7 @@ async function uploadToStorage(filePath, destination) {
   });
 
   try {
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
     // Заполнение формы
     await page.evaluate(() => {

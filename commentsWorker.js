@@ -55,7 +55,7 @@ async function uploadToStorage(data, destination) {
   let commentsList = [];
 
   try {
-    await page.goto(url, { waitUntil: 'networkidle2' });
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
     await page.evaluate(() => {
       document.querySelector('input[name="formParams[first_name]"]').value = 'Алексей';
