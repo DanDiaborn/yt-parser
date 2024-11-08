@@ -4,7 +4,6 @@ const { Storage } = require('@google-cloud/storage');
 const ffmpeg = require('fluent-ffmpeg');
 const fs = require('fs');
 const path = require('path');
-
 const dns = require('dns');
 dns.setDefaultResultOrder('ipv4first');
 
@@ -16,9 +15,7 @@ if (!process.env.PATH && workerData.PATH) {
 const keyFilePath = './izibizi-352900-a2cdb2e0d471.json';
 const storage = new Storage({
   keyFilename: keyFilePath,
-  clientOptions: {
-    family: 4,
-  },
+  clientOptions: { family: 4 },
 });
 const bucketName = 'powerdatabucket';
 
@@ -36,12 +33,10 @@ async function uploadToStorage(filePath, destination) {
     resumable: false,
     contentType: 'audio/mpeg',
   });
-
   console.log(`Uploaded audio to ${bucketName}/${destination}`);
 }
 
 (async () => {
-
   const { url, author, title } = workerData;
   const safeTitle = title.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
   const localAudioPath = path.resolve(audioFolder, `audio_${safeTitle}.mp3`);
@@ -53,17 +48,18 @@ async function uploadToStorage(filePath, destination) {
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-gpu',
-      `--proxy-server=${workerData.proxyHost}:${workerData.proxyPort}`
-    ]
+      `--proxy-server=${workerData.proxyHost}:${workerData.proxyPort}`,
+    ],
   });
   const page = await browser.newPage();
   await page.authenticate({
     username: workerData.proxyUsername,
-    password: workerData.proxyPassword
+    password: workerData.proxyPassword,
   });
 
   try {
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.waitForSelector('input[name="formParams[first_name]"]');
 
     // Заполнение формы
     await page.evaluate(() => {
@@ -73,8 +69,7 @@ async function uploadToStorage(filePath, destination) {
     });
 
     await page.click('.btn.f-btn.button-md.btn-success');
-    await page.waitForNavigation(1000);
-
+    await page.waitForTimeout(1000);
 
     const frame = await getIframeContentFrame(page);
 
@@ -95,11 +90,7 @@ async function uploadToStorage(filePath, destination) {
           .audioFrequency(8000)
           .noVideo()
           .on('progress', (progress) => {
-            if (progress.percent !== undefined) {
-              console.log(`${title} скачано: ${progress.percent.toFixed(2)}%`);
-            } else {
-              console.log('Загрузка продолжается...');
-            }
+            console.log(`${title} скачано: ${progress.percent ? progress.percent.toFixed(2) : 'Загрузка продолжается...'}%`);
           })
           .on('end', resolve)
           .on('error', reject)
@@ -116,7 +107,6 @@ async function uploadToStorage(filePath, destination) {
     } else {
       console.log('Не удалось найти JSON с видео данными.');
     }
-
   } catch (error) {
     console.error('Ошибка выполнения:', error);
   } finally {
@@ -133,7 +123,7 @@ async function getIframeContentFrame(page, retries = 5, delay = 5000) {
 
   if (retries > 0) {
     console.log(`Iframe не найден, повторная попытка через ${delay / 1000} секунд... Осталось попыток: ${retries}`);
-    await new Promise(resolve => setTimeout(resolve, delay));
+    await page.waitForTimeout(delay);
     return getIframeContentFrame(page, retries - 1, delay);
   }
 
