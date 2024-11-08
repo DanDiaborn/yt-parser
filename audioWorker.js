@@ -73,8 +73,7 @@ async function uploadToStorage(filePath, destination) {
     });
 
     await page.click('.btn.f-btn.button-md.btn-success');
-    // await page.waitForNavigation(1000);
-    await page.waitForSelector('script[type="application/ld+json"]', { timeout: 60000 });
+    await page.waitForNavigation(1000);
 
 
     const frame = await getIframeContentFrame(page);
