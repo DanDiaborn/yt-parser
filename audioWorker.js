@@ -61,66 +61,81 @@ async function uploadToStorage(filePath, destination) {
     password: workerData.proxyPassword
   });
 
-  try {
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  const maxRetries = 3;
+  let currentRetry = 0;
 
-    // Заполнение формы
-    await page.evaluate(() => {
-      document.querySelector('input[name="formParams[first_name]"]').value = 'Алексей';
-      document.querySelector('input[name="formParams[email]"]').value = 'alexeinikolaev@gmail.com';
-      document.querySelector('input[name="formParams[phone]"]').value = '+79591361323';
-    });
+  while (currentRetry < maxRetries) {
+    try {
+      console.log(`Попытка ${currentRetry + 1} загрузки страницы ${url}`);
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 }); // 2 минуты тайм-аут
 
-    await page.click('.btn.f-btn.button-md.btn-success');
-    await page.waitForNavigation();
-
-    const frame = await getIframeContentFrame(page);
-
-    const videoData = await frame.evaluate(() => {
-      const scriptTag = document.querySelector('script[type="application/ld+json"]');
-      return scriptTag ? JSON.parse(scriptTag.innerText) : null;
-    });
-
-    if (videoData && videoData.contentUrl) {
-      const videoUrl = videoData.contentUrl;
-      console.log('Скачивание аудио из URL:', videoUrl);
-
-      await new Promise((resolve, reject) => {
-        ffmpeg(videoUrl)
-          .output(localAudioPath)
-          .audioBitrate(8)
-          .audioChannels(1)
-          .audioFrequency(8000)
-          .noVideo()
-          .on('progress', (progress) => {
-            if (progress.percent !== undefined) {
-              console.log(`${title} скачано: ${progress.percent.toFixed(2)}%`);
-            } else {
-              console.log('Загрузка продолжается...');
-            }
-          })
-          .on('end', resolve)
-          .on('error', reject)
-          .run();
+      // Заполнение формы
+      await page.evaluate(() => {
+        document.querySelector('input[name="formParams[first_name]"]').value = 'Алексей';
+        document.querySelector('input[name="formParams[email]"]').value = 'alexeinikolaev@gmail.com';
+        document.querySelector('input[name="formParams[phone]"]').value = '+79591361323';
       });
 
-      try {
-        await uploadToStorage(localAudioPath, storagePath);
-      } catch (error) {
-        console.error('Ошибка загрузки в хранилище:', error);
-      } finally {
-        fs.unlinkSync(localAudioPath); // Удаление файла в любом случае
-      }
-    } else {
-      console.log('Не удалось найти JSON с видео данными.');
-    }
+      await page.click('.btn.f-btn.button-md.btn-success');
+      await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 120000 });
 
-  } catch (error) {
-    console.error('Ошибка выполнения:', error);
-  } finally {
-    await browser.close();
+      const frame = await getIframeContentFrame(page);
+
+      const videoData = await frame.evaluate(() => {
+        const scriptTag = document.querySelector('script[type="application/ld+json"]');
+        return scriptTag ? JSON.parse(scriptTag.innerText) : null;
+      });
+
+      if (videoData && videoData.contentUrl) {
+        const videoUrl = videoData.contentUrl;
+        console.log('Скачивание аудио из URL:', videoUrl);
+
+        await new Promise((resolve, reject) => {
+          ffmpeg(videoUrl)
+            .output(localAudioPath)
+            .audioBitrate(8)
+            .audioChannels(1)
+            .audioFrequency(8000)
+            .noVideo()
+            .on('progress', (progress) => {
+              if (progress.percent !== undefined) {
+                console.log(`${title} скачано: ${progress.percent.toFixed(2)}%`);
+              } else {
+                console.log('Загрузка продолжается...');
+              }
+            })
+            .on('end', resolve)
+            .on('error', reject)
+            .run();
+        });
+
+        try {
+          await uploadToStorage(localAudioPath, storagePath);
+        } catch (error) {
+          console.error('Ошибка загрузки в хранилище:', error);
+        } finally {
+          fs.unlinkSync(localAudioPath); // Удаление файла в любом случае
+        }
+        break;
+      } else {
+        console.log('Не удалось найти JSON с видео данными.');
+      }
+
+    } catch (error) {
+      console.error('Ошибка выполнения:', error);
+      currentRetry++;
+      if (currentRetry >= maxRetries) {
+        console.error('Превышено максимальное количество попыток загрузки страницы.');
+      } else {
+        console.log('Попытка повторной загрузки...');
+        await page.reload({ waitUntil: 'domcontentloaded', timeout: 120000 });
+      }
+    }
   }
+
+  await browser.close();
 })();
+
 
 async function getIframeContentFrame(page, retries = 5, delay = 5000) {
   let iframeElement = await page.$('iframe.embed-responsive-item');
