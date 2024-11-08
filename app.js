@@ -5,7 +5,6 @@ const { getSubtitles } = require('./scrapper.js');
 const randomUserAgent = require('random-useragent');
 const axios = require('axios');
 const { Worker } = require('worker_threads');
-const PQueue = require('p-queue');
 
 const dns = require('dns');
 dns.setDefaultResultOrder('ipv4first');
@@ -45,114 +44,124 @@ const axiosInstance = axios.create({
   timeout: 10000, // Таймаут для предотвращения зависания
 });
 
-// Создаем очередь для аудио-воркеров с ограничением на 2 параллельных процесса
-const audioWorkerQueue = new PQueue({ concurrency: 2 });
+// Функция инициализации приложения с использованием `p-queue`
+async function initializeApp() {
+  const { default: PQueue } = await import('p-queue');
 
-async function fetchSubtitlesAuto(videoId) {
-  const languages = ['auto', 'pl', 'en', 'ru', 'es', 'fr', 'de', 'id'];
-  let subtitles = null;
+  // Создаем очередь для аудио-воркеров с ограничением на 2 параллельных процесса
+  const audioWorkerQueue = new PQueue({ concurrency: 2 });
 
-  for (const lang of languages) {
-    try {
-      subtitles = await getSubtitles({
-        videoID: videoId,
-        lang: lang,
-        axiosInstance,
+  async function fetchSubtitlesAuto(videoId) {
+    const languages = ['auto', 'pl', 'en', 'ru', 'es', 'fr', 'de', 'id'];
+    let subtitles = null;
+
+    for (const lang of languages) {
+      try {
+        subtitles = await getSubtitles({
+          videoID: videoId,
+          lang: lang,
+          axiosInstance,
+        });
+
+        if (subtitles && subtitles.length > 0) {
+          const formattedText = subtitles.map(sub => sub.text).join(' ');
+          return formattedText;
+        }
+      } catch (error) {
+        console.log(`Error fetching subtitles for video ${videoId} on language ${lang}: ${error.message}`);
+        continue;
+      }
+    }
+
+    return 'No subtitles available';
+  }
+
+  function runWorker(path, item) {
+    return new Promise((resolve, reject) => {
+      const worker = new Worker(path, {
+        workerData: {
+          ...item,
+          PATH: process.env.PATH,
+          proxyHost,
+          proxyPort,
+          proxyUsername,
+          proxyPassword
+        }
       });
 
-      if (subtitles && subtitles.length > 0) {
-        const formattedText = subtitles.map(sub => sub.text).join(' ');
-        return formattedText;
-      }
-    } catch (error) {
-      console.log(`Error fetching subtitles for video ${videoId} on language ${lang}: ${error.message}`);
-      continue;
+      worker.on('message', message => console.log(message));
+      worker.on('error', reject);
+      worker.on('exit', code => {
+        if (code !== 0) {
+          reject(new Error(`Worker завершился с кодом ошибки: ${code}`));
+        } else {
+          resolve(`Worker завершил обработку для ${item.title}`);
+        }
+      });
+    });
+  }
+
+  app.get('/', async (req, res) => {
+    res.json('NEW ALIVE');
+  });
+
+  app.post('/captions', async (req, res) => {
+    const { videoIds } = req.body;
+
+    if (!Array.isArray(videoIds)) {
+      return res.status(400).json({ error: 'Invalid input. Expected an array of video IDs.' });
     }
-  }
 
-  return 'No subtitles available';
-}
+    const results = await Promise.all(videoIds.map(async (id) => {
+      const subtitlesText = await fetchSubtitlesAuto(id);
+      return { videoId: id, subtitlesText };
+    }));
 
-function runWorker(path, item) {
-  return new Promise((resolve, reject) => {
-    const worker = new Worker(path, {
-      workerData: {
-        ...item,
-        PATH: process.env.PATH,
-        proxyHost,
-        proxyPort,
-        proxyUsername,
-        proxyPassword
-      }
-    });
+    res.json(results);
+  });
 
-    worker.on('message', message => console.log(message));
-    worker.on('error', reject);
-    worker.on('exit', code => {
-      if (code !== 0) {
-        reject(new Error(`Worker завершился с кодом ошибки: ${code}`));
-      } else {
-        resolve(`Worker завершил обработку для ${item.title}`);
-      }
+  app.post('/bison-comments', (req, res) => {
+    const data = req.body;
+
+    if (!Array.isArray(data)) {
+      return res.status(400).json({ error: "Неверный формат данных. Ожидается массив объектов." });
+    }
+
+    // Отправляем ответ клиенту сразу
+    res.json({ message: 'Запрос принят. Воркеры выполняются в фоновом режиме.' });
+
+    // Запускаем воркеры для комментариев без ограничения
+    data.forEach(item => {
+      runWorker('./commentsWorker.js', item)
+        .then(result => console.log(result))
+        .catch(error => console.error(`Ошибка при выполнении воркера для ${item.title}: ${error.message}`));
     });
   });
+
+  app.post('/bison-audio', (req, res) => {
+    const data = req.body;
+
+    if (!Array.isArray(data)) {
+      return res.status(400).json({ error: "Неверный формат данных. Ожидается массив объектов." });
+    }
+
+    // Отправляем ответ клиенту сразу
+    res.json({ message: 'Запрос принят. Воркеры выполняются в фоновом режиме.' });
+
+    // Запускаем аудио-воркеры в очереди с ограничением
+    data.forEach(item => {
+      audioWorkerQueue.add(() => runWorker('./audioWorker.js', item))
+        .then(result => console.log(result))
+        .catch(error => console.error(`Ошибка при выполнении аудио-воркера для ${item.title}: ${error.message}`));
+    });
+  });
+
+  app.listen(port, () => {
+    console.log(`Server running on http://195.161.68.104:49234`);
+  });
 }
 
-app.get('/', async (req, res) => {
-  res.json('NEW ALIVE');
-});
-
-app.post('/captions', async (req, res) => {
-  const { videoIds } = req.body;
-
-  if (!Array.isArray(videoIds)) {
-    return res.status(400).json({ error: 'Invalid input. Expected an array of video IDs.' });
-  }
-
-  const results = await Promise.all(videoIds.map(async (id) => {
-    const subtitlesText = await fetchSubtitlesAuto(id);
-    return { videoId: id, subtitlesText };
-  }));
-
-  res.json(results);
-});
-
-app.post('/bison-comments', (req, res) => {
-  const data = req.body;
-
-  if (!Array.isArray(data)) {
-    return res.status(400).json({ error: "Неверный формат данных. Ожидается массив объектов." });
-  }
-
-  // Отправляем ответ клиенту сразу
-  res.json({ message: 'Запрос принят. Воркеры выполняются в фоновом режиме.' });
-
-  // Запускаем воркеры для комментариев без ограничения
-  data.forEach(item => {
-    runWorker('./commentsWorker.js', item)
-      .then(result => console.log(result))
-      .catch(error => console.error(`Ошибка при выполнении воркера для ${item.title}: ${error.message}`));
-  });
-});
-
-app.post('/bison-audio', (req, res) => {
-  const data = req.body;
-
-  if (!Array.isArray(data)) {
-    return res.status(400).json({ error: "Неверный формат данных. Ожидается массив объектов." });
-  }
-
-  // Отправляем ответ клиенту сразу
-  res.json({ message: 'Запрос принят. Воркеры выполняются в фоновом режиме.' });
-
-  // Запускаем аудио-воркеры в очереди с ограничением
-  data.forEach(item => {
-    audioWorkerQueue.add(() => runWorker('./audioWorker.js', item))
-      .then(result => console.log(result))
-      .catch(error => console.error(`Ошибка при выполнении аудио-воркера для ${item.title}: ${error.message}`));
-  });
-});
-
-app.listen(port, () => {
-  console.log(`Server running on http://195.161.68.104:49234`);
+// Инициализация приложения
+initializeApp().catch(error => {
+  console.error('Ошибка при инициализации приложения:', error);
 });
