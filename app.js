@@ -5,13 +5,12 @@ const { getSubtitles } = require('./scrapper.js');
 const randomUserAgent = require('random-useragent');
 const axios = require('axios');
 const { Worker } = require('worker_threads');
+const PQueue = require('p-queue');
 
 const dns = require('dns');
 dns.setDefaultResultOrder('ipv4first');
 
-
 const { HttpsProxyAgent } = require('https-proxy-agent');
-
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -46,6 +45,8 @@ const axiosInstance = axios.create({
   timeout: 10000, // Таймаут для предотвращения зависания
 });
 
+// Создаем очередь для аудио-воркеров с ограничением на 2 параллельных процесса
+const audioWorkerQueue = new PQueue({ concurrency: 2 });
 
 async function fetchSubtitlesAuto(videoId) {
   const languages = ['auto', 'pl', 'en', 'ru', 'es', 'fr', 'de', 'id'];
@@ -71,12 +72,13 @@ async function fetchSubtitlesAuto(videoId) {
 
   return 'No subtitles available';
 }
+
 function runWorker(path, item) {
   return new Promise((resolve, reject) => {
     const worker = new Worker(path, {
       workerData: {
         ...item,
-        PATH: process.env.PATH, // Передаем PATH в workerData,
+        PATH: process.env.PATH,
         proxyHost,
         proxyPort,
         proxyUsername,
@@ -95,14 +97,6 @@ function runWorker(path, item) {
     });
   });
 }
-
-// const commentCounts = {}; // Сохраняет количество комментариев для каждого видео или автора
-
-// app.get('/comment-count', (req, res) => {
-//   const { title } = req.query;
-//   const count = commentCounts[title] || 0;
-//   res.json({ title, count });
-// });
 
 app.get('/', async (req, res) => {
   res.json('NEW ALIVE');
@@ -133,17 +127,13 @@ app.post('/bison-comments', (req, res) => {
   // Отправляем ответ клиенту сразу
   res.json({ message: 'Запрос принят. Воркеры выполняются в фоновом режиме.' });
 
-  // Запускаем воркеры в фоновом режиме
-  Promise.all(data.map(item => runWorker('./commentsWorker.js', item)))
-    .then(results => {
-      console.log('Воркеры завершили работу:', results);
-      // Здесь можно добавить дополнительную логику по обработке результатов
-    })
-    .catch(error => {
-      console.error(`Ошибка при выполнении воркеров: ${error.message}`);
-    });
+  // Запускаем воркеры для комментариев без ограничения
+  data.forEach(item => {
+    runWorker('./commentsWorker.js', item)
+      .then(result => console.log(result))
+      .catch(error => console.error(`Ошибка при выполнении воркера для ${item.title}: ${error.message}`));
+  });
 });
-
 
 app.post('/bison-audio', (req, res) => {
   const data = req.body;
@@ -155,24 +145,14 @@ app.post('/bison-audio', (req, res) => {
   // Отправляем ответ клиенту сразу
   res.json({ message: 'Запрос принят. Воркеры выполняются в фоновом режиме.' });
 
-  // Запускаем воркеры в фоновом режиме
-  Promise.all(data.map(item => runWorker('./audioWorker.js', item)))
-    .then(results => {
-      console.log('Воркеры завершили работу:', results);
-      // Здесь можно добавить дополнительную логику по обработке результатов
-    })
-    .catch(error => {
-      console.error(`Ошибка при выполнении воркеров: ${error.message}`);
-    });
+  // Запускаем аудио-воркеры в очереди с ограничением
+  data.forEach(item => {
+    audioWorkerQueue.add(() => runWorker('./audioWorker.js', item))
+      .then(result => console.log(result))
+      .catch(error => console.error(`Ошибка при выполнении аудио-воркера для ${item.title}: ${error.message}`));
+  });
 });
-
-// app.post('/update-comment-count', (req, res) => {
-//   const { title, count } = req.body;
-//   commentCounts[title] = count;
-//   res.json({ message: `Количество комментариев обновлено для ${title}: ${count}` });
-// });
 
 app.listen(port, () => {
   console.log(`Server running on http://195.161.68.104:49234`);
 });
-

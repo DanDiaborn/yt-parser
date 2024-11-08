@@ -29,6 +29,7 @@
     "https-proxy-agent": "^7.0.5",
     "instagram-scraping": "^1.0.17",
     "lodash": "^4.17.21",
+    "p-queue": "^8.0.1",
     "puppeteer": "^23.6.0",
     "random-useragent": "^0.5.0",
     "striptags": "^3.2.0",
