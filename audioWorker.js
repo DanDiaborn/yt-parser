@@ -48,6 +48,7 @@ async function uploadToStorage(filePath, destination) {
   const storagePath = `test/${author}/${safeTitle}/${safeTitle}.mp3`;
 
   const browser = await puppeteer.launch({
+    headless: true,
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
@@ -72,7 +73,9 @@ async function uploadToStorage(filePath, destination) {
     });
 
     await page.click('.btn.f-btn.button-md.btn-success');
-    await page.waitForNavigation();
+    // await page.waitForNavigation(1000);
+    await page.waitForSelector('script[type="application/ld+json"]', { timeout: 60000 });
+
 
     const frame = await getIframeContentFrame(page);
 
