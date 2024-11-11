@@ -5,10 +5,12 @@ const { getSubtitles } = require('./scrapper.js');
 const randomUserAgent = require('random-useragent');
 const axios = require('axios');
 const { Worker } = require('worker_threads');
+
 const dns = require('dns');
 dns.setDefaultResultOrder('ipv4first');
 
 const { HttpsProxyAgent } = require('https-proxy-agent');
+
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -20,11 +22,14 @@ const proxyPort = '9999';
 const proxyUsername = 'ihu31wfnsg-corp-country-PL-state-858787-city-756135-hold-session-session-671faadc61892';
 const proxyPassword = 'hsXWenfhfCjDwacq';
 
+// Создаем строку прокси-URL с аутентификацией
 const proxyUrl = `http://${proxyUsername}:${proxyPassword}@${proxyHost}:${proxyPort}`;
 const agent = new HttpsProxyAgent(proxyUrl);
 
+// Устанавливаем надежный User-Agent вручную
 const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36';
 
+// Создаем экземпляр axios с прокси-настройками и дополнительными заголовками
 const axiosInstance = axios.create({
   httpsAgent: agent,
   headers: {
@@ -36,26 +41,15 @@ const axiosInstance = axios.create({
     'DNT': '1',
     'Referer': 'https://www.google.com/',
   },
-  timeout: 20000,
+  timeout: 10000, // Таймаут для предотвращения зависания
 });
 
+// Функция инициализации приложения с использованием `p-queue`
 async function initializeApp() {
   const { default: PQueue } = await import('p-queue');
-  const audioWorkerQueue = new PQueue({ concurrency: 1 });
 
-  async function fetchSubtitlesWithRetries(videoId, maxRetries = 3, delay = 1000) {
-    let retries = 0;
-    while (retries < maxRetries) {
-      try {
-        return await fetchSubtitlesAuto(videoId);
-      } catch (error) {
-        retries += 1;
-        console.log(`Retry ${retries} for video ${videoId} due to error: ${error.message}`);
-        await new Promise(resolve => setTimeout(resolve, delay * retries));
-      }
-    }
-    return 'No subtitles available';
-  }
+  // Создаем очередь для аудио-воркеров с ограничением на 2 параллельных процесса
+  const audioWorkerQueue = new PQueue({ concurrency: 2 });
 
   async function fetchSubtitlesAuto(videoId) {
     const languages = ['auto', 'pl', 'en', 'ru', 'es', 'fr', 'de', 'id'];
@@ -118,15 +112,10 @@ async function initializeApp() {
       return res.status(400).json({ error: 'Invalid input. Expected an array of video IDs.' });
     }
 
-    const results = [];
-    for (let i = 0; i < videoIds.length; i++) {
-      const id = videoIds[i];
-      const subtitlesText = await fetchSubtitlesWithRetries(id);
-      results.push({ videoId: id, subtitlesText });
-
-      // Очищаем память каждые 10 видео, если это возможно
-      if (i % 10 === 0 && global.gc) global.gc();
-    }
+    const results = await Promise.all(videoIds.map(async (id) => {
+      const subtitlesText = await fetchSubtitlesAuto(id);
+      return { videoId: id, subtitlesText };
+    }));
 
     res.json(results);
   });
@@ -138,8 +127,10 @@ async function initializeApp() {
       return res.status(400).json({ error: "Неверный формат данных. Ожидается массив объектов." });
     }
 
+    // Отправляем ответ клиенту сразу
     res.json({ message: 'Запрос принят. Воркеры выполняются в фоновом режиме.' });
 
+    // Запускаем воркеры для комментариев без ограничения
     data.forEach(item => {
       runWorker('./commentsWorker.js', item)
         .then(result => console.log(result))
@@ -154,8 +145,10 @@ async function initializeApp() {
       return res.status(400).json({ error: "Неверный формат данных. Ожидается массив объектов." });
     }
 
+    // Отправляем ответ клиенту сразу
     res.json({ message: 'Запрос принят. Воркеры выполняются в фоновом режиме.' });
 
+    // Запускаем аудио-воркеры в очереди с ограничением
     data.forEach(item => {
       audioWorkerQueue.add(() => runWorker('./audioWorker.js', item))
         .then(result => console.log(result))
@@ -168,6 +161,7 @@ async function initializeApp() {
   });
 }
 
+// Инициализация приложения
 initializeApp().catch(error => {
   console.error('Ошибка при инициализации приложения:', error);
 });
