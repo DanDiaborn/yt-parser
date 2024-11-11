@@ -36,14 +36,26 @@ const axiosInstance = axios.create({
     'DNT': '1',
     'Referer': 'https://www.google.com/',
   },
-  timeout: 20000, // Увеличен таймаут для предотвращения зависания
+  timeout: 20000,
 });
 
 async function initializeApp() {
   const { default: PQueue } = await import('p-queue');
-
-  // Уменьшили количество параллельных процессов до 1 для уменьшения нагрузки
   const audioWorkerQueue = new PQueue({ concurrency: 1 });
+
+  async function fetchSubtitlesWithRetries(videoId, maxRetries = 3, delay = 1000) {
+    let retries = 0;
+    while (retries < maxRetries) {
+      try {
+        return await fetchSubtitlesAuto(videoId);
+      } catch (error) {
+        retries += 1;
+        console.log(`Retry ${retries} for video ${videoId} due to error: ${error.message}`);
+        await new Promise(resolve => setTimeout(resolve, delay * retries));
+      }
+    }
+    return 'No subtitles available';
+  }
 
   async function fetchSubtitlesAuto(videoId) {
     const languages = ['auto', 'pl', 'en', 'ru', 'es', 'fr', 'de', 'id'];
@@ -95,12 +107,6 @@ async function initializeApp() {
     });
   }
 
-  // Добавлена пауза в 1 секунду между запросами для очереди
-  async function fetchSubtitlesWithDelay(videoId) {
-    await new Promise(resolve => setTimeout(resolve, 1000)); // 1 секунда задержки
-    return fetchSubtitlesAuto(videoId);
-  }
-
   app.get('/', async (req, res) => {
     res.json('NEW ALIVE');
   });
@@ -112,11 +118,15 @@ async function initializeApp() {
       return res.status(400).json({ error: 'Invalid input. Expected an array of video IDs.' });
     }
 
-    const results = await Promise.all(videoIds.map(async (id) => {
-      const subtitlesText = await fetchSubtitlesWithDelay(id);
-      if (global.gc) global.gc(); // Вызов сборщика мусора для очистки памяти
-      return { videoId: id, subtitlesText };
-    }));
+    const results = [];
+    for (let i = 0; i < videoIds.length; i++) {
+      const id = videoIds[i];
+      const subtitlesText = await fetchSubtitlesWithRetries(id);
+      results.push({ videoId: id, subtitlesText });
+
+      // Очищаем память каждые 10 видео, если это возможно
+      if (i % 10 === 0 && global.gc) global.gc();
+    }
 
     res.json(results);
   });
