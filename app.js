@@ -5,12 +5,10 @@ const { getSubtitles } = require('./scrapper.js');
 const randomUserAgent = require('random-useragent');
 const axios = require('axios');
 const { Worker } = require('worker_threads');
-
 const dns = require('dns');
 dns.setDefaultResultOrder('ipv4first');
 
 const { HttpsProxyAgent } = require('https-proxy-agent');
-
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -22,14 +20,11 @@ const proxyPort = '9999';
 const proxyUsername = 'ihu31wfnsg-corp-country-PL-state-858787-city-756135-hold-session-session-671faadc61892';
 const proxyPassword = 'hsXWenfhfCjDwacq';
 
-// Создаем строку прокси-URL с аутентификацией
 const proxyUrl = `http://${proxyUsername}:${proxyPassword}@${proxyHost}:${proxyPort}`;
 const agent = new HttpsProxyAgent(proxyUrl);
 
-// Устанавливаем надежный User-Agent вручную
 const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36';
 
-// Создаем экземпляр axios с прокси-настройками и дополнительными заголовками
 const axiosInstance = axios.create({
   httpsAgent: agent,
   headers: {
@@ -41,15 +36,14 @@ const axiosInstance = axios.create({
     'DNT': '1',
     'Referer': 'https://www.google.com/',
   },
-  timeout: 15000, // Таймаут для предотвращения зависания
+  timeout: 20000, // Увеличен таймаут для предотвращения зависания
 });
 
-// Функция инициализации приложения с использованием `p-queue`
 async function initializeApp() {
   const { default: PQueue } = await import('p-queue');
 
-  // Создаем очередь для аудио-воркеров с ограничением на 2 параллельных процесса
-  const audioWorkerQueue = new PQueue({ concurrency: 2 });
+  // Уменьшили количество параллельных процессов до 1 для уменьшения нагрузки
+  const audioWorkerQueue = new PQueue({ concurrency: 1 });
 
   async function fetchSubtitlesAuto(videoId) {
     const languages = ['auto', 'pl', 'en', 'ru', 'es', 'fr', 'de', 'id'];
@@ -101,6 +95,12 @@ async function initializeApp() {
     });
   }
 
+  // Добавлена пауза в 1 секунду между запросами для очереди
+  async function fetchSubtitlesWithDelay(videoId) {
+    await new Promise(resolve => setTimeout(resolve, 1000)); // 1 секунда задержки
+    return fetchSubtitlesAuto(videoId);
+  }
+
   app.get('/', async (req, res) => {
     res.json('NEW ALIVE');
   });
@@ -113,7 +113,8 @@ async function initializeApp() {
     }
 
     const results = await Promise.all(videoIds.map(async (id) => {
-      const subtitlesText = await fetchSubtitlesAuto(id);
+      const subtitlesText = await fetchSubtitlesWithDelay(id);
+      if (global.gc) global.gc(); // Вызов сборщика мусора для очистки памяти
       return { videoId: id, subtitlesText };
     }));
 
@@ -127,10 +128,8 @@ async function initializeApp() {
       return res.status(400).json({ error: "Неверный формат данных. Ожидается массив объектов." });
     }
 
-    // Отправляем ответ клиенту сразу
     res.json({ message: 'Запрос принят. Воркеры выполняются в фоновом режиме.' });
 
-    // Запускаем воркеры для комментариев без ограничения
     data.forEach(item => {
       runWorker('./commentsWorker.js', item)
         .then(result => console.log(result))
@@ -145,10 +144,8 @@ async function initializeApp() {
       return res.status(400).json({ error: "Неверный формат данных. Ожидается массив объектов." });
     }
 
-    // Отправляем ответ клиенту сразу
     res.json({ message: 'Запрос принят. Воркеры выполняются в фоновом режиме.' });
 
-    // Запускаем аудио-воркеры в очереди с ограничением
     data.forEach(item => {
       audioWorkerQueue.add(() => runWorker('./audioWorker.js', item))
         .then(result => console.log(result))
@@ -161,7 +158,6 @@ async function initializeApp() {
   });
 }
 
-// Инициализация приложения
 initializeApp().catch(error => {
   console.error('Ошибка при инициализации приложения:', error);
 });
