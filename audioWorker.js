@@ -45,7 +45,7 @@ async function uploadToStorage(filePath, destination) {
   const { url, author, title } = workerData;
   const safeTitle = title.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
   const localAudioPath = path.resolve(audioFolder, `audio_${safeTitle}.mp3`);
-  const storagePath = `${author}/${safeTitle}/${safeTitle}-normal_quality.mp3`;
+  const storagePath = `${author}/${safeTitle}/${safeTitle}-low_quality.mp3`;
 
   const browser = await puppeteer.launch({
     args: [
@@ -88,7 +88,7 @@ async function uploadToStorage(filePath, destination) {
       await new Promise((resolve, reject) => {
         ffmpeg(videoUrl)
           .output(localAudioPath)
-          .audioBitrate(32)
+          .audioBitrate(16)
           .audioChannels(1)
           .audioFrequency(16000)
           .noVideo()
